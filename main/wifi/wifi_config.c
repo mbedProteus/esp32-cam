@@ -8,6 +8,7 @@
 #include <lwip/err.h>
 #include <lwip/sys.h>
 #include "led.h"
+#include "event.h"
 
 
 #define TAG "wifi"
@@ -28,6 +29,7 @@ static void wifi_event_handler(void *event_handler_arg,
             ESP_LOGD(TAG, "Wifi started");
             set_led(LED_WIFI_STARTED);
             esp_wifi_connect();
+            esp
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
             if (number_retry < RETRY_CONNECT)
@@ -64,7 +66,7 @@ static void wifi_event_handler(void *event_handler_arg,
     }
 }
 
-void sta_init(void *args)
+int sta_init(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -99,6 +101,8 @@ void sta_init(void *args)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+
+    return 0;
 }
 
 wifi_state_t wifi_config_get_current_state(void) {

@@ -32,7 +32,7 @@ typedef enum {
 } wifi_state_t;
 
 
-void sta_init(void *args);
+int sta_init(void);
 wifi_state_t wifi_config_get_current_state(void);
 void wifi_config_retry(void);
 
