@@ -59,7 +59,7 @@ int register_service(init_function_t func,
             head->prev = ptr_service;
             head = ptr_service;
         }
-    }  
+    }
 
     return 0;
 }

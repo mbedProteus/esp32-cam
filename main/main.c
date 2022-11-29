@@ -27,7 +27,7 @@ void mount_storage () {
 
 void init_service() {
     register_service(&sta_init, "STA", 2);
-    register_service(&event_init, "Event service", 1);
+    register_service(&event_init, "Event", 1);
 }
 
 void app_main(void) {

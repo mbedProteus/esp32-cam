@@ -1,15 +1,15 @@
 #include "wifi_config.h"
-#include <esp_wifi.h>
-#include <esp_system.h>
+
 #include <esp_log.h>
+#include <esp_system.h>
+#include <esp_wifi.h>
+#include <event.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <esp_event.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
-#include "led.h"
-#include "event.h"
 
+#include "led.h"
 
 #define TAG "wifi"
 
@@ -27,14 +27,15 @@ static void wifi_event_handler(void *event_handler_arg,
         {
         case WIFI_EVENT_STA_START:
             ESP_LOGD(TAG, "Wifi started");
-            set_led(LED_WIFI_STARTED);
+            // set_led(LED_WIFI_STARTED);
+            set_event("wifi-status", "started");
             esp_wifi_connect();
-            esp
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
             if (number_retry < RETRY_CONNECT)
             {
-                set_led(LED_WIFI_CONNECT_RETRYING);
+                // set_led(LED_WIFI_CONNECT_RETRYING);
+                set_event("wifi-status", "retry");
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
                 esp_wifi_connect();
                 number_retry++;
@@ -42,12 +43,12 @@ static void wifi_event_handler(void *event_handler_arg,
             }
             else
             {
-                set_led(LED_WIFI_DISCONNECTED);
+                set_event("wifi-status", "disconnected");
                 ESP_LOGI(TAG, "connect to the AP fail");
             }
             break;
         case WIFI_EVENT_STA_CONNECTED:
-            set_led(LED_WIFI_CONNECTED);
+            set_event("wifi-status", "connected");
             ESP_LOGI(TAG, "connected to %s", STA_SSID);
             break;
         default:
@@ -61,6 +62,9 @@ static void wifi_event_handler(void *event_handler_arg,
         {
             ip_event_got_ip_t *ip_event = (ip_event_got_ip_t *)event_data;
             ESP_LOGI(TAG, "got ip" IPSTR, IP2STR(&ip_event->ip_info.ip));
+            char str_ip[18] = {0};
+            sprintf(str_ip, IPSTR, IP2STR(&ip_event->ip_info.ip));
+            set_event("ipv4_address", str_ip);
             number_retry = 0;
         }
     }
@@ -79,15 +83,15 @@ int sta_init(void)
     esp_event_handler_instance_t got_ip;
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                        ESP_EVENT_ANY_ID,
-                                        &wifi_event_handler,
-                                        NULL,
-                                        &any_id));
+                                                        ESP_EVENT_ANY_ID,
+                                                        &wifi_event_handler,
+                                                        NULL,
+                                                        &any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                        IP_EVENT_STA_GOT_IP,
-                                        &wifi_event_handler,
-                                        NULL,
-                                        &got_ip));
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &wifi_event_handler,
+                                                        NULL,
+                                                        &got_ip));
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -105,11 +109,13 @@ int sta_init(void)
     return 0;
 }
 
-wifi_state_t wifi_config_get_current_state(void) {
+wifi_state_t wifi_config_get_current_state(void)
+{
     return _current_state;
 }
 
-void wifi_config_retry(void) {
+void wifi_config_retry(void)
+{
     if (_current_state == WIFI_STATE_DISCONNECTED)
         esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, portMAX_DELAY);
 }

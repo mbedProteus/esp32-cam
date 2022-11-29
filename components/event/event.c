@@ -1,13 +1,27 @@
 
-#include <esp_log.h>
 #include "event.h"
-#include <string.h>
+
+#include <esp_log.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define TAG "Event"
 
-#define CAPACITY 500 // Size of the Hash Table
+ESP_EVENT_DEFINE_BASE(SYS_EVENT);
+
+typedef struct
+{
+    char *key;
+    char *value;
+} event_t;
+
+typedef enum
+{
+    SYS_EVENT_ID,
+} event_id_t;
+
+#define CAPACITY 50  // Size of the Hash Table
 
 static unsigned long hash_function(char *key)
 {
@@ -299,14 +313,14 @@ static void print_table(HashTable *table)
     {
         if (table->items[i])
         {
-            printf("Index:%d, Key:%s, ID:%ld", i, table->items[i]->key, table->items[i]->id);
+            printf("Index:%d, \"%s\":\"%s\"", i, table->items[i]->key, table->items[i]->value);
             if (table->overflow_buckets[i])
             {
                 printf(" => Overflow Bucket => ");
                 LinkedList *head = table->overflow_buckets[i];
                 while (head)
                 {
-                    printf("Key:%s, ID:%ld", table->items[i]->key, table->items[i]->id);
+                    printf(", \"%s\":\"%s\"", table->items[i]->key, table->items[i]->value);
                     head = head->next;
                 }
             }
@@ -326,8 +340,12 @@ static void listen_all_event_handler(void *event_handler_arg,
                                      void *event_data)
 {
     event_t *ev = (event_t *)event_data;
+    ESP_LOGI(TAG, "Event callback: {\"%s\": \"%s\"}", ev->key, ev->value);
+
     xSemaphoreTake(_lock_mutex, portMAX_DELAY);
     ht_insert(table, ev->key, ev->value);
+    free(ev->key);
+    free(ev->value);
     xSemaphoreGive(_lock_mutex);
 }
 
@@ -339,7 +357,7 @@ int event_init(void)
     esp_event_loop_create_default();
 
     esp_event_handler_instance_register(SYS_EVENT,
-                                        ESP_EVENT_ANY_ID,
+                                        SYS_EVENT_ID,
                                         &listen_all_event_handler,
                                         NULL,
                                         listen_all_event);
@@ -356,9 +374,15 @@ char *get_event(const char *key)
     return ev->value;
 }
 
-void set_event(int32_t id, char *value)
+void set_event(const char *key, const char *value)
 {
-    esp_event_post(SYS_EVENT, id, (void *)value, sizeof(value), portMAX_DELAY);
+    event_t ev = {
+        .key = strdup(key),
+        .value = strdup(value),
+    };
+
+    ESP_LOGI(TAG, "Set event: {\"%s\": \"%s\"}", key, value);
+    esp_event_post(SYS_EVENT, SYS_EVENT_ID, &ev, sizeof(event_t), portMAX_DELAY);
 }
 
 void show_event(void)
