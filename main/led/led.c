@@ -8,6 +8,8 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <esp_log.h>
+#include <event.h>
+#include <string.h>
 
 #define TAG "led"
 
@@ -17,65 +19,45 @@
 #define GREEN_CHANNEL LEDC_CHANNEL_1
 #define BLUE_CHANNEL LEDC_CHANNEL_2
 
-
-// static QueueHandle_t led_queue = NULL;
-
-// static TaskHandle_t led_service_task;
-ESP_EVENT_DEFINE_BASE(LED_EVENTS);
-
-static esp_event_handler_instance_t _led_event_instance;
-// static volatile bool _is_started = false;
-
 typedef struct {
     uint32_t r_duty;
     uint32_t g_duty;
     uint32_t b_duty;
 } rgb_duty_t;
 
-static void led_event_handler(void *handler_args,
-                         esp_event_base_t event_base,
-                         int32_t event_id,
-                         void * event_data) {
-
-    ESP_LOGI(TAG, "Receive %"PRId32" cmd", event_id);
-    
-    if (event_base == LED_EVENTS)
+void wifi_led_status_callback(char *value)
+{
+    ESP_LOGI(TAG, "Value: %s", value);
+    if (strcmp(value, "disconnected") == 0)
     {
-        switch (event_id)
-        {
-        case LED_WIFI_STARTED:
-            /* Yellow */
-            gpio_set_level(LED_R_IO, 1);
-            gpio_set_level(LED_B_IO, 0);
-            gpio_set_level(LED_G_IO, 1);
-            break;
-        case LED_WIFI_CONNECTED:
-            /* Green */
-            gpio_set_level(LED_R_IO, 0);
-            gpio_set_level(LED_B_IO, 0);
-            gpio_set_level(LED_G_IO, 1);
-            break;
-        case LED_WIFI_DISCONNECTED:
-            gpio_set_level(LED_R_IO, 1);
-            gpio_set_level(LED_B_IO, 0);
-            gpio_set_level(LED_G_IO, 0);
-        break;
-        case LED_WIFI_CONNECT_RETRYING:
-            /* Red */
-            gpio_set_level(LED_R_IO, 1);
-            gpio_set_level(LED_B_IO, 1);
-            gpio_set_level(LED_G_IO, 0);
-            break;
-        default:
-            gpio_set_level(LED_R_IO, 0);
-            gpio_set_level(LED_B_IO, 0);
-            gpio_set_level(LED_G_IO, 0);
-            break;
-        }
+        gpio_set_level(LED_R_IO, 1);
+        gpio_set_level(LED_B_IO, 0);
+        gpio_set_level(LED_G_IO, 0);
+    }
+    else if (strcmp(value, "connected") == 0)
+    {
+        /* Green */
+        gpio_set_level(LED_R_IO, 0);
+        gpio_set_level(LED_B_IO, 0);
+        gpio_set_level(LED_G_IO, 1);
+    }
+    else if (strcmp(value, "retry") == 0)
+    {
+        /* Red */
+        gpio_set_level(LED_R_IO, 1);
+        gpio_set_level(LED_B_IO, 1);
+        gpio_set_level(LED_G_IO, 0);
+    }
+    else if (strcmp(value, "started") == 0)
+    {
+        /* Yellow */
+        gpio_set_level(LED_R_IO, 1);
+        gpio_set_level(LED_B_IO, 0);
+        gpio_set_level(LED_G_IO, 1);
     }
 }
 
-static void led_init(void)
+int led_init(void)
 {
     gpio_config_t io_config = {
         .intr_type = GPIO_INTR_DISABLE,
@@ -85,40 +67,12 @@ static void led_init(void)
         .pin_bit_mask = ((1UL << LED_R_IO) | (1UL << LED_B_IO) | (1UL << LED_G_IO))
     };
 
-
-    // ledc_timer_config_t ledc_timer = {
-    //     .clk_cfg = LEDC_AUTO_CLK,
-    //     .duty_resolution = LEDC_TIMER_14_BIT,
-    //     .freq_hz = 5000,
-    //     .speed_mode = LEDC_LOW_SPEED_MODE,
-    //     .timer_num = LEDC_TIMER_0
-    // };
-    // ledc_timer_config(&ledc_timer);
-
-    // ledc_channel_config_t channel_config = {
-    //     .channel = LEDC_CHANNEL_0,
-    //     .duty = 0,
-    //     .hpoint = 0,
-    // }
-
     gpio_config(&io_config);
-    esp_event_handler_instance_register(LED_EVENTS,
-                                        ESP_EVENT_ANY_ID,
-                                        &led_event_handler,
-                                        NULL,
-                                        &_led_event_instance);
 
-}
+    event_context evctx = register_event("wifi-status", &wifi_led_status_callback);
+    if (evctx != NULL) {
+        ESP_LOGI(TAG, "Registered event with id : %"PRIu32, (uint32_t)evctx);
+    }
 
-void led_service_start(void) {
-    led_init();
-}
-
-void led_service_stop(void) {
-    esp_event_handler_instance_unregister(LED_EVENTS, ESP_EVENT_ANY_ID, _led_event_instance);
-}
-
-void set_led(led_cmd_t cmd) {
-    ESP_LOGI(TAG, "Start send %d cmd", cmd);
-    esp_event_post(LED_EVENTS, (int32_t)cmd, NULL, 0, portMAX_DELAY);
+    return 0;
 }

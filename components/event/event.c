@@ -334,6 +334,15 @@ static HashTable *table;
 static esp_event_handler_instance_t listen_all_event;
 static QueueHandle_t _lock_mutex;
 
+typedef struct event_callback {
+    char* key;
+    callback_func_t cb;
+    struct event_callback *next;
+    struct event_callback *prev;
+} event_callback_t;
+
+static event_callback_t *callback_list = NULL;
+
 static void listen_all_event_handler(void *event_handler_arg,
                                      esp_event_base_t event_base,
                                      int32_t event_id,
@@ -344,6 +353,11 @@ static void listen_all_event_handler(void *event_handler_arg,
 
     xSemaphoreTake(_lock_mutex, portMAX_DELAY);
     ht_insert(table, ev->key, ev->value);
+    for(event_callback_t *ev_cb = callback_list; ev_cb != NULL; ev_cb = ev_cb->next) {
+        if (strcmp(ev->key, ev_cb->key) == 0) {
+            ev_cb->cb(ev->value);
+        }
+    }
     free(ev->key);
     free(ev->value);
     xSemaphoreGive(_lock_mutex);
@@ -388,4 +402,45 @@ void set_event(const char *key, const char *value)
 void show_event(void)
 {
     print_table(table);
+}
+
+event_context register_event(const char *key, callback_func_t cb)
+{
+    event_callback_t *ev_cb = calloc(1, sizeof(event_callback_t));
+    ev_cb->key = strdup(key);
+    ev_cb->cb = cb;
+
+    ESP_LOGI(TAG, "Registering %s event callback", key);
+
+    xSemaphoreTake(_lock_mutex, portMAX_DELAY);
+    if (callback_list == NULL) {
+        callback_list = ev_cb;
+    } else {
+        ev_cb->next = callback_list;
+        callback_list->prev = ev_cb;
+        callback_list = ev_cb;
+    }
+    xSemaphoreGive(_lock_mutex);
+    return (event_context)ev_cb;
+}
+
+void unregiter_event(event_context ctx) {
+    event_callback_t *ev_cb = (event_callback_t *)ctx;
+    xSemaphoreTake(_lock_mutex, portMAX_DELAY);
+
+    if (ev_cb == callback_list) {
+        free(ev_cb->key);
+        free(ev_cb);
+        xSemaphoreGive(_lock_mutex);
+        return;
+    }
+    if (ev_cb->next != NULL) {
+        ev_cb->next->prev = ev_cb->prev;
+    }
+
+    ev_cb->prev->next = ev_cb->next;
+
+    free(ev_cb->key);
+    free(ev_cb);
+    xSemaphoreGive(_lock_mutex);
 }

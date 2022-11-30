@@ -14,9 +14,6 @@ typedef enum {
     LED_WIFI_CONNECT_RETRYING
 } led_cmd_t;
 
-void led_service_start(void);
-void led_service_stop(void);
-
 void set_led(led_cmd_t cmd);
-
+int led_init(void);
 #endif // __LED__
