@@ -5,9 +5,9 @@ typedef int (*init_function_t)(void);
 
 int register_service(init_function_t func,
                      const char *service_name,
-                     int priority);
+                     int priority,
+                     int enable);
 
-
-int service_start(void);
+int service_auto_start(void);
 
 #endif // __SERVICE_MANAGEMENT__

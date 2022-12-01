@@ -26,22 +26,14 @@ void mount_storage () {
 }
 
 void init_service() {
-    register_service(&sta_init, "STA", 2);
-    register_service(&event_init, "Event", 1);
-    register_service(&led_init, "LED", 3);
+    register_service(&sta_init, "STA", 2, 1);
+    register_service(&event_init, "Event", 1, 1);
+    register_service(&led_init, "LED", 3, 0);
 }
 
 void app_main(void) {
     mount_storage();
     init_service();
 
-    service_start();
-
-
-    while (1)
-    {
-        vTaskDelay(10000/portTICK_PERIOD_MS);
-        show_event();
-    }
-    
+    service_auto_start();
 }
