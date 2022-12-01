@@ -8,6 +8,7 @@
 #include "service_management.h"
 #include "event.h"
 #include <esp_wifi.h>
+#include "config.h"
 
 #define TAG "main"
 
@@ -21,6 +22,12 @@ void init_nvs() {
     ESP_ERROR_CHECK(ret);
 }
 
+// void init_config() {
+//     nvs_sec_cfg_t config;
+//     config.
+//     nvs_flash_read_security_cfg()
+// }
+
 void mount_storage () {
     init_nvs();
 }
@@ -33,6 +40,7 @@ void init_service() {
 
 void app_main(void) {
     mount_storage();
+    init_config();
     init_service();
 
     service_auto_start();
