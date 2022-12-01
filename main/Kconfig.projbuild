@@ -1,0 +1,20 @@
+menu "Default Wifi Configuration"
+    config STA_SSID
+        string "STA SSID"
+        default "MatterDemo"
+        help
+            WiFi SSID
+
+    config STA_PASSPHRASE
+        string "STA PASSPHRASE"
+        default "1234567789"
+        help
+            WiFi Passphrase
+
+    config RETRY_CONNECT
+        int "Retry to connect"
+        default 5
+        help
+            The number of attempts to connect to wifi
+
+endmenu
