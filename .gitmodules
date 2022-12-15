@@ -1,3 +1,11 @@
 [submodule "components/camera"]
 	path = components/camera
 	url = https://github.com/espressif/esp32-camera
+[submodule "sdk/esp-aws-iot"]
+	path = sdk/esp-aws-iot
+	url = https://github.com/espressif/esp-aws-iot.git
+	branch = release/202012.04-LTS
+[submodule "sdk/esp-idf"]
+	path = sdk/esp-idf
+	url = https://github.com/espressif/esp-idf.git
+	branch = release/v4.4
